@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>BuyARank</title>
+    <style>
+        body { font-family: Arial; max-width: 450px; margin: auto; padding: 20px; }
+        h1 { text-align: center; }
+        .item { padding: 5px 0; border-bottom: 1px solid #eee; }
+        input, button { width: 100%; padding: 8px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<h1>BuyARank</h1>
+<p>Pagás, elegís un número y aparecés. Nada más.</p>
+
+<h2>Ranking</h2>
+<div id="ranking"></div>
+
+<h2>Comprá tu número</h2>
+<input type="number" id="num" min="1" placeholder="Elegí un número">
+<p>Precio: <span id="price">—</span></p>
+<button onclick="comprar()">Comprar</button>
+
+<script>
+// Base de datos ultra simple
+let precios = {}; 
+let ocupados = {}; 
+const precioBase = 1;
+
+// Genera el ranking inicial
+function render() {
+    const div = document.getElementById("ranking");
+    div.innerHTML = "";
+
+    const max = Math.max(10, ...Object.keys(ocupados).map(Number));
+
+    for (let i = 1; i <= max; i++) {
+        let texto = ocupados[i] ? `${i}. ${ocupados[i]}` : `${i}. (libre)`;
+        div.innerHTML += `<div class="item">${texto}</div>`;
+    }
+}
+
+// Calcula el precio automático
+document.getElementById("num").addEventListener("input", function() {
+    const n = parseInt(this.value);
+    if (!n) return document.getElementById("price").innerText = "—";
+
+    if (!ocupados[n]) {
+        document.getElementById("price").innerText = "$" + precioBase;
+    } else {
+        const prev = precios[n];
+        document.getElementById("price").innerText = "$" + (prev * 2);
+    }
+});
+
+// Simula compra (por ahora)
+function comprar() {
+    const n = parseInt(document.getElementById("num").value);
+    if (!n) return;
+
+    let precio = !ocupados[n] ? precioBase : precios[n] * 2;
+
+    ocupados[n] = "NuevoUsuario";
+    precios[n] = precio;
+
+    render();
+    alert("Compraste el número " + n + " por $" + precio);
+}
+
+render();
+</script>
+
+</body>
+</html>
