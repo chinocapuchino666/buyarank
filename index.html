@@ -1,75 +1,138 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <title>BuyARank</title>
-    <style>
-        body { font-family: Arial; max-width: 450px; margin: auto; padding: 20px; }
-        h1 { text-align: center; }
-        .item { padding: 5px 0; border-bottom: 1px solid #eee; }
-        input, button { width: 100%; padding: 8px; margin-top: 10px; }
-    </style>
+  <meta charset="UTF-8" />
+  <title>BuyARank</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: Arial, sans-serif; max-width:720px; margin:20px auto; padding:18px; }
+    h1 { text-align:center; margin-bottom:6px; }
+    p.lead { text-align:center; color:#555; margin-top:0; margin-bottom:18px; }
+    .row{display:flex;gap:10px;margin-bottom:10px;}
+    input[type="number"], input[type="text"]{flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;}
+    button{padding:10px;border:none;border-radius:6px;background:#ff6b00;color:white;cursor:pointer;}
+    .ranking{margin-top:18px;border-top:1px solid #eee;padding-top:10px;}
+    .item{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #fafafa;}
+    .small{font-size:0.9em;color:#666;}
+    .note{font-size:0.9em;color:#a00;margin-top:10px;}
+    @media(max-width:480px){body{padding:12px}}
+  </style>
 </head>
 <body>
 
-<h1>BuyARank</h1>
-<p>Pagás, elegís un número y aparecés. Nada más.</p>
+  <h1>BuyARank</h1>
+  <p class="lead">Pagás, elegís un número y ponés tu alias. (Prototipo)</p>
 
-<h2>Ranking</h2>
-<div id="ranking"></div>
+  <div>
+    <label class="small">Número</label>
+    <div class="row">
+      <input id="numInput" type="number" min="1" placeholder="Ej: 7" />
+      <button id="calcBtn" type="button">Calcular precio</button>
+    </div>
 
-<h2>Comprá tu número</h2>
-<input type="number" id="num" min="1" placeholder="Elegí un número">
-<p>Precio: <span id="price">—</span></p>
-<button onclick="comprar()">Comprar</button>
+    <label class="small">Alias</label>
+    <input id="aliasInput" type="text" placeholder="Tu alias público (ej: @pepito)" />
+
+    <p class="small">Precio actual: <strong id="priceText">—</strong></p>
+    <button id="buyBtn">Comprar puesto</button>
+    <p class="note">Nota: esto es un prototipo. Las compras son simuladas y se guardan en este navegador.</p>
+  </div>
+
+  <div class="ranking">
+    <h3>Ranking (guardado en este navegador)</h3>
+    <div id="rankingList"></div>
+  </div>
 
 <script>
-// Base de datos ultra simple
-let precios = {}; 
-let ocupados = {}; 
-const precioBase = 1;
+/* Config */
+const BASE_PRICE = 1; // precio inicial
 
-// Genera el ranking inicial
-function render() {
-    const div = document.getElementById("ranking");
-    div.innerHTML = "";
-
-    const max = Math.max(10, ...Object.keys(ocupados).map(Number));
-
-    for (let i = 1; i <= max; i++) {
-        let texto = ocupados[i] ? `${i}. ${ocupados[i]}` : `${i}. (libre)`;
-        div.innerHTML += `<div class="item">${texto}</div>`;
-    }
+/* Helpers de almacenamiento local */
+function loadState() {
+  const raw = localStorage.getItem('buyarank_state');
+  return raw ? JSON.parse(raw) : { numbers: {} };
+}
+function saveState(state) {
+  localStorage.setItem('buyarank_state', JSON.stringify(state));
 }
 
-// Calcula el precio automático
-document.getElementById("num").addEventListener("input", function() {
-    const n = parseInt(this.value);
-    if (!n) return document.getElementById("price").innerText = "—";
+/* Estado en memoria */
+let state = loadState();
 
-    if (!ocupados[n]) {
-        document.getElementById("price").innerText = "$" + precioBase;
-    } else {
-        const prev = precios[n];
-        document.getElementById("price").innerText = "$" + (prev * 2);
-    }
-});
+/* Elementos */
+const numInput = document.getElementById('numInput');
+const aliasInput = document.getElementById('aliasInput');
+const priceText = document.getElementById('priceText');
+const buyBtn = document.getElementById('buyBtn');
+const rankingList = document.getElementById('rankingList');
+const calcBtn = document.getElementById('calcBtn');
 
-// Simula compra (por ahora)
+/* Renderizar ranking */
+function renderRanking() {
+  // Mostrar hasta el máximo número presente o al menos 10
+  const keys = Object.keys(state.numbers).map(k => parseInt(k));
+  const maxNum = Math.max(10, ...keys, 0);
+  rankingList.innerHTML = '';
+  for (let i = 1; i <= maxNum; i++) {
+    const entry = state.numbers[i];
+    const alias = entry ? entry.alias : '(libre)';
+    const price = entry ? entry.price : BASE_PRICE;
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.innerHTML = `<div><strong>#${i}</strong> — <span class="small">${alias}</span></div>
+                     <div class="small">$${price}</div>`;
+    rankingList.appendChild(div);
+  }
+}
+
+/* Calcular precio actual para un número */
+function precioActual(num) {
+  const entry = state.numbers[num];
+  return entry ? entry.price * 2 : BASE_PRICE;
+}
+
+/* Actualizar texto de precio cuando cambie el input */
+function updatePriceText() {
+  const n = parseInt(numInput.value);
+  if (!n || n < 1) {
+    priceText.innerText = '—';
+    return;
+  }
+  priceText.innerText = '$' + precioActual(n);
+}
+
+/* Comprar (simulado) */
 function comprar() {
-    const n = parseInt(document.getElementById("num").value);
-    if (!n) return;
+  const n = parseInt(numInput.value);
+  const alias = aliasInput.value && aliasInput.value.trim();
+  if (!n || n < 1) return alert('Ingresá un número válido.');
+  if (!alias) return alert('Ingresá un alias (ej: @pepito).');
 
-    let precio = !ocupados[n] ? precioBase : precios[n] * 2;
+  const amount = precioActual(n);
+  // Simulamos el pago: en un MVP real aquí iría Stripe/MP
+  const ok = confirm(`Vas a comprar #${n} por $${amount}. Confirmar compra?`);
+  if (!ok) return;
 
-    ocupados[n] = "NuevoUsuario";
-    precios[n] = precio;
+  // Guardar en localStorage: establecer dueño y precio (precio pagado)
+  state.numbers[n] = { alias: alias, price: amount };
+  saveState(state);
+  renderRanking();
 
-    render();
-    alert("Compraste el número " + n + " por $" + precio);
+  // limpiar campos
+  aliasInput.value = '';
+  numInput.value = '';
+  priceText.innerText = '—';
+  alert(`¡Listo! Sos dueño de #${n} por $${amount} (guardado en este navegador).`);
 }
 
-render();
+/* Eventos */
+numInput.addEventListener('input', updatePriceText);
+calcBtn.addEventListener('click', updatePriceText);
+buyBtn.addEventListener('click', comprar);
+
+/* Inicializar */
+renderRanking();
+updatePriceText();
 </script>
 
 </body>
